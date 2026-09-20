@@ -31,6 +31,7 @@ def issue_assignment(assignment, entries):
 @transaction.atomic
 def revoke_assignment(assignment,reason):
  if assignment.status!='ISSUED' or assignment.visit.status!='DRAFT': raise AssignmentError('لا يمكن الإلغاء')
+ if not reason or not reason.strip(): raise AssignmentError('سبب الإلغاء مطلوب')
  assignment.status='REVOKED'; assignment.reason=reason; assignment.revoked_at=timezone.now(); assignment.save(update_fields=['status','reason','revoked_at'])
  for item in assignment.visit.items.all():
   other=AssignmentEntry.objects.filter(assignment__visit=assignment.visit,stable_id=item.stable_id,assignment__status='ISSUED').exclude(assignment=assignment)

@@ -53,6 +53,9 @@ class VisitSafetyTests(TestCase):
   apply_guide(v,guide); apply_guide(v,guide); self.assertEqual(v.items.count(),1); self.assertEqual(v.items.first().origin,'GUIDE')
  def test_guide_from_other_reference_is_ignored(self):
   other=Reference.objects.create(name='آخر',shared=True); Guide.objects.create(name='غير متوافق',reference=other,node_ids=['i1']); v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today(),reference_snapshot={'id':self.ref.pk,'nodes':[{'stable_id':'i1'}]}); guide=Guide.objects.get(name='غير متوافق'); apply_guide(v,guide); self.assertEqual(v.items.count(),0)
+ def test_revoke_requires_reason(self):
+  v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today()); VisitNode.objects.create(visit=v,stable_id='i1',title='بند',node_type='ITEM'); a=Assignment.objects.create(visit=v,title='A'); issue_assignment(a,[{'stable_id':'i1'}])
+  with self.assertRaises(AssignmentError): revoke_assignment(a,'')
  def test_revoke_is_blocked_after_completion(self):
   v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today(),status='COMPLETED'); VisitNode.objects.create(visit=v,stable_id='i1',title='بند',node_type='ITEM'); a=Assignment.objects.create(visit=v,title='A');
   with self.assertRaises(AssignmentError): revoke_assignment(a,'متأخر')
