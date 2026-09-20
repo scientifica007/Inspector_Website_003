@@ -2,6 +2,7 @@ from datetime import date
 from django.test import TestCase,Client
 from django.contrib.auth.models import User
 from .models import *
+from .services import issue_assignment, revoke_assignment, AssignmentError
 class VisitSafetyTests(TestCase):
  def setUp(self):
   self.user=User.objects.create_user('inspector','', 'pw'); self.other=User.objects.create_user('other','', 'pw'); self.ins=Institution.objects.create(name='مؤسسة'); self.ref=Reference.objects.create(name='مرجع',shared=True); self.node=ReferenceNode.objects.create(reference=self.ref,stable_id='i1',title='بند',node_type='ITEM'); self.c=Client(); self.c.login(username='inspector',password='pw')
@@ -15,3 +16,11 @@ class VisitSafetyTests(TestCase):
   v=Visit.objects.create(institution=self.ins,inspector=self.other,date=date.today()); self.assertEqual(self.c.get('/visits/%s/'%v.pk).status_code,404)
  def test_export_has_version(self):
   v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today(),reference_snapshot={'name':'x'}); response=self.c.get('/visits/%s/export/'%v.pk); self.assertEqual(response.json()['schema_version'],'1.0')
+ def test_assignment_issue_is_atomic_and_adds_constraints(self):
+  v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today()); item=VisitNode.objects.create(visit=v,stable_id='i1',title='بند',node_type='ITEM'); a=Assignment.objects.create(visit=v,title='تكليف')
+  issue_assignment(a,[{'stable_id':'i1','scope_locked':True,'completion_required':True}]); item.refresh_from_db(); self.assertTrue(item.scope_locked and item.completion_required)
+  bad=Assignment.objects.create(visit=v,title='فاسد')
+  with self.assertRaises(AssignmentError): issue_assignment(bad,[{'stable_id':'missing'}])
+  self.assertEqual(bad.entries.count(),0); self.assertEqual(bad.status,'DRAFT')
+ def test_overlapping_revoke_keeps_other_obligation(self):
+  v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today()); VisitNode.objects.create(visit=v,stable_id='i1',title='بند',node_type='ITEM'); a=Assignment.objects.create(visit=v,title='A'); b=Assignment.objects.create(visit=v,title='B'); issue_assignment(a,[{'stable_id':'i1','scope_locked':True}]); issue_assignment(b,[{'stable_id':'i1','completion_required':True}]); revoke_assignment(a,'انتهى'); item=v.items.get(); self.assertFalse(item.scope_locked); self.assertTrue(item.completion_required)
