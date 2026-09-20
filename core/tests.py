@@ -39,6 +39,9 @@ class VisitSafetyTests(TestCase):
   self.assertEqual(self.c.get('/governance/').status_code,302)
  def test_admin_can_create_assignment_for_selected_target(self):
   admin=User.objects.create_user('admin2',password='pw',is_staff=True); v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today()); VisitNode.objects.create(visit=v,stable_id='i1',title='بند',node_type='ITEM'); self.c.force_login(admin); response=self.c.post('/assignments/',{'visit':v.pk,'title':'زيارة رسمية','targets':['i1'],'lock_i1':'on'}); self.assertEqual(response.status_code,302); a=Assignment.objects.get(title='زيارة رسمية'); self.assertTrue(a.entries.get().scope_locked)
+ def test_empty_assignment_cannot_be_issued(self):
+  v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today()); a=Assignment.objects.create(visit=v,title='فارغ')
+  with self.assertRaises(AssignmentError): issue_assignment(a,[])
  def test_assignment_issue_is_atomic_and_adds_constraints(self):
   v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today()); item=VisitNode.objects.create(visit=v,stable_id='i1',title='بند',node_type='ITEM'); a=Assignment.objects.create(visit=v,title='تكليف')
   issue_assignment(a,[{'stable_id':'i1','scope_locked':True,'completion_required':True}]); item.refresh_from_db(); self.assertTrue(item.scope_locked and item.completion_required)

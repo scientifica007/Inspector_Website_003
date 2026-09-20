@@ -19,6 +19,7 @@ def apply_guide(visit, guide):
 def issue_assignment(assignment, entries):
  if assignment.status!='DRAFT' or assignment.visit.status!='DRAFT': raise AssignmentError('لا يمكن إصدار التكليف')
  ids={x['stable_id'] for x in entries}; available={x.stable_id for x in assignment.visit.items.all()}
+ if not ids: raise AssignmentError('يجب أن يحتوي التكليف على عنصر واحد على الأقل')
  if not ids.issubset(available): raise AssignmentError('يوجد عنصر غير موجود في snapshot')
  assignment.entries.all().delete()
  for x in entries: assignment.entries.create(**x)
