@@ -18,6 +18,8 @@ class VisitSafetyTests(TestCase):
   v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today()); self.assertEqual(self.c.post('/visits/%s/delete/'%v.pk).status_code,302); self.assertFalse(Visit.objects.filter(pk=v.pk).exists())
  def test_completed_visit_is_immutable_in_view(self):
   v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today(),status='COMPLETED'); VisitNode.objects.create(visit=v,stable_id='i1',title='قديم',node_type='ITEM',result='CONFORM'); self.c.post('/visits/%s/'%v.pk,{'result_1':'NONCONFORM','obs_1':'تعديل'}); self.assertEqual(v.items.first().result,'CONFORM')
+ def test_required_item_blocks_completion(self):
+  v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today()); VisitNode.objects.create(visit=v,stable_id='i1',title='إلزامي',node_type='ITEM',completion_required=True); self.c.post('/visits/%s/complete/'%v.pk); v.refresh_from_db(); self.assertEqual(v.status,'DRAFT')
  def test_other_inspector_denied(self):
   v=Visit.objects.create(institution=self.ins,inspector=self.other,date=date.today()); self.assertEqual(self.c.get('/visits/%s/'%v.pk).status_code,404)
  def test_export_has_version(self):
