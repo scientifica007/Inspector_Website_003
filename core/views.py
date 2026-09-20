@@ -105,7 +105,7 @@ def visit_detail(request,pk):
   messages.success(request,'تم حفظ الزيارة')
  nodes=v.items.all(); progress=(nodes.filter(result__in=['CONFORM','NONCONFORM','NA'],excluded=False).count(),nodes.filter(excluded=False).count())
  selected=set(nodes.values_list('stable_id',flat=True)); available=[x for x in v.reference_snapshot.get('nodes',[]) if x.get('stable_id') not in selected]
- return render(request,'visit_detail.html',{'visit':v,'items':nodes,'progress':progress,'available':available,'guides':Guide.objects.filter(active=True,reference__name=v.reference_name),'assignments':v.assignments.filter(status='ISSUED')})
+ return render(request,'visit_detail.html',{'visit':v,'items':nodes,'progress':progress,'available':available,'guides':Guide.objects.filter(active=True,reference__name=v.reference_name),'assignments':v.assignments.filter(status='ISSUED'),'assignment_history':v.assignments.all()})
 @login_required
 def complete(request,pk):
  v=get_object_or_404(Visit,pk=pk,inspector=request.user)
