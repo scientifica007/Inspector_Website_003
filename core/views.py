@@ -13,7 +13,10 @@ def institutions(request):
  if request.method=='POST': Institution.objects.create(name=request.POST['name'],kind=request.POST.get('kind','')); return redirect('institutions')
  return render(request,'institutions.html',{'institutions':Institution.objects.all()})
 @login_required
-def references(request): return render(request,'references.html',{'references':Reference.objects.filter(shared=True)|Reference.objects.filter(owner=request.user)})
+def references(request):
+ if request.method=='POST':
+  Reference.objects.create(name=request.POST['name'],owner=request.user,shared=False); messages.success(request,'تم إنشاء المرجع الخاص'); return redirect('references')
+ return render(request,'references.html',{'references':Reference.objects.filter(shared=True)|Reference.objects.filter(owner=request.user)})
 @login_required
 @transaction.atomic
 def visit_new(request):
