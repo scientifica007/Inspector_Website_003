@@ -7,6 +7,7 @@ from django.contrib import messages
 from .models import *
 from .services import apply_guide, AssignmentError
 from .governance import submit_reference, review_proposal, ProposalError
+from .services import issue_assignment
 @login_required
 def dashboard(request): return render(request,'dashboard.html',{'visits':Visit.objects.filter(inspector=request.user).select_related('institution'),'institutions':Institution.objects.filter(active=True),'references':Reference.objects.filter(shared=True)|Reference.objects.filter(owner=request.user)})
 @login_required
@@ -33,6 +34,24 @@ def governance(request):
 def review_proposal_view(request,proposal_id,decision):
  if not request.user.is_staff or request.method!='POST': return redirect('dashboard')
  proposal=get_object_or_404(ReferenceProposal,pk=proposal_id); review_proposal(proposal,request.user,decision=='approve'); return redirect('governance')
+@login_required
+def assignments(request):
+ if not request.user.is_staff: return redirect('dashboard')
+ if request.method=='POST':
+  visit=get_object_or_404(Visit,pk=request.POST['visit'])
+  a=Assignment.objects.create(visit=visit,title=request.POST['title'])
+  for x in request.POST.getlist('targets'):
+   AssignmentEntry.objects.create(assignment=a,stable_id=x,scope_locked=bool(request.POST.get('lock_'+x)),completion_required=bool(request.POST.get('required_'+x)))
+  return redirect('assignments')
+ return render(request,'assignments.html',{'visits':Visit.objects.filter(status='DRAFT'),'assignments':Assignment.objects.select_related('visit').all()})
+@login_required
+def issue_assignment_view(request,pk):
+ if not request.user.is_staff or request.method!='POST': return redirect('dashboard')
+ a=get_object_or_404(Assignment,pk=pk)
+ entries=[{'stable_id':e.stable_id,'scope_locked':e.scope_locked,'completion_required':e.completion_required} for e in a.entries.all()]
+ try: issue_assignment(a,entries); messages.success(request,'تم إصدار التكليف')
+ except AssignmentError as exc: messages.error(request,str(exc))
+ return redirect('assignments')
 @login_required
 def delete_reference(request,pk):
  ref=get_object_or_404(Reference,pk=pk,owner=request.user,shared=False)
