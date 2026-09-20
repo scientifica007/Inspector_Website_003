@@ -44,9 +44,14 @@ def visit_detail(request,pk):
 @login_required
 def complete(request,pk):
  v=get_object_or_404(Visit,pk=pk,inspector=request.user)
- if v.status=='DRAFT' and not v.items.filter(excluded=False,completion_required=True).exclude(result__in=['CONFORM','NONCONFORM','NA']).exists(): v.status='COMPLETED'; v.save()
- else: messages.error(request,'توجد عناصر إلزامية غير مكتملة')
+ if request.method=='POST' and v.status=='DRAFT' and not v.items.filter(excluded=False,completion_required=True).exclude(result__in=['CONFORM','NONCONFORM','NA']).exists(): v.status='COMPLETED'; v.save()
+ else: messages.error(request,'لا يمكن إكمال الزيارة بهذه الحالة')
  return redirect('visit_detail',pk)
+@login_required
+def delete_visit(request,pk):
+ v=get_object_or_404(Visit,pk=pk,inspector=request.user)
+ if request.method=='POST' and v.status=='DRAFT': v.delete(); return redirect('dashboard')
+ messages.error(request,'لا يمكن حذف زيارة مكتملة'); return redirect('visit_detail',pk)
 @login_required
 def export_visit(request,pk):
  v=get_object_or_404(Visit,pk=pk,inspector=request.user); data={'schema_version':'1.0','visit_id':v.pk,'institution':v.institution.name,'inspector':v.inspector.username,'date':v.date.isoformat(),'status':v.status,'reference':v.reference_snapshot,'scope':[{'id':n.stable_id,'title':n.title,'selected':n.selected,'excluded':n.excluded,'origin':n.origin,'result':n.result,'observation':n.observation,'completion_required':n.completion_required,'scope_locked':n.scope_locked} for n in v.items.all()]}; return JsonResponse(data,json_dumps_params={'ensure_ascii':False,'indent':2})
