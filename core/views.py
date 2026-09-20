@@ -32,6 +32,18 @@ def apply_guide_view(request,pk,guide_id):
   apply_guide(v,guide); messages.success(request,'تم تطبيق الدليل على نطاق الزيارة');
  return redirect('visit_detail',pk)
 @login_required
+def add_scope_node(request,pk):
+ v=get_object_or_404(Visit,pk=pk,inspector=request.user)
+ if request.method=='POST' and v.status=='DRAFT':
+  stable=request.POST.get('stable_id'); raw=next((x for x in v.reference_snapshot.get('nodes',[]) if x.get('stable_id')==stable),None)
+  if raw and not v.items.filter(stable_id=stable).exists(): VisitNode.objects.create(visit=v,stable_id=stable,title=raw.get('title',''),node_type=raw.get('node_type','ITEM'),origin='MANUAL',parent_id_snapshot=str(raw.get('parent_id') or ''))
+ return redirect('visit_detail',pk)
+@login_required
+def toggle_exclusion(request,pk,item_id):
+ v=get_object_or_404(Visit,pk=pk,inspector=request.user); item=get_object_or_404(VisitNode,pk=item_id,visit=v)
+ if request.method=='POST' and v.status=='DRAFT' and not item.scope_locked: item.excluded=not item.excluded; item.save(update_fields=['excluded'])
+ return redirect('visit_detail',pk)
+@login_required
 def visit_detail(request,pk):
  v=get_object_or_404(Visit,pk=pk,inspector=request.user)
  if request.method=='POST' and v.status=='DRAFT':
@@ -39,8 +51,9 @@ def visit_detail(request,pk):
   if request.POST.get('add'):
    title=request.POST.get('title','عنصر محلي'); VisitNode.objects.create(visit=v,stable_id='local-'+str(v.items.count()+1),title=title,node_type='ITEM',origin='LOCAL')
   messages.success(request,'تم حفظ الزيارة')
- nodes=v.items.all(); progress=(nodes.filter(result__in=['CONFORM','NONCONFORM','NA']).count(),nodes.filter(excluded=False).count())
- return render(request,'visit_detail.html',{'visit':v,'items':nodes,'progress':progress,'guides':Guide.objects.filter(active=True,reference__name=v.reference_name)})
+ nodes=v.items.all(); progress=(nodes.filter(result__in=['CONFORM','NONCONFORM','NA'],excluded=False).count(),nodes.filter(excluded=False).count())
+ selected=set(nodes.values_list('stable_id',flat=True)); available=[x for x in v.reference_snapshot.get('nodes',[]) if x.get('stable_id') not in selected]
+ return render(request,'visit_detail.html',{'visit':v,'items':nodes,'progress':progress,'available':available,'guides':Guide.objects.filter(active=True,reference__name=v.reference_name)})
 @login_required
 def complete(request,pk):
  v=get_object_or_404(Visit,pk=pk,inspector=request.user)
