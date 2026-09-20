@@ -12,4 +12,5 @@ class Command(BaseCommand):
    branch=ReferenceNode.objects.create(reference=ref,stable_id='b-education',title='التنظيم البيداغوجي',node_type='BRANCH')
    spec=ReferenceNode.objects.create(reference=ref,stable_id='s-attendance',title='متابعة الدخول التكويني',node_type='SPEC',parent=branch)
    for sid,title in [('i-register','سجل الحضور محدث'),('i-schedule','البرنامج الأسبوعي معلن')]: ReferenceNode.objects.create(reference=ref,stable_id=sid,title=title,node_type='ITEM',parent=spec)
+  Guide.objects.get_or_create(name='دليل الزيارة الدورية',reference=ref,defaults={'node_ids':['i-register','i-schedule']})
   self.stdout.write(self.style.SUCCESS('Demo data ready: admin/Admin123!, inspector/Inspector123!'))
