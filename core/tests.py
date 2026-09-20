@@ -14,6 +14,8 @@ class VisitSafetyTests(TestCase):
   response=self.c.post('/logout/'); self.assertEqual(response.status_code,302)
  def test_private_reference_creation_is_owned(self):
   response=self.c.post('/references/',{'name':'مرجعي'}); self.assertEqual(response.status_code,302); self.assertTrue(Reference.objects.filter(name='مرجعي',owner=self.user,shared=False).exists())
+ def test_reference_node_authoring_preserves_parent(self):
+  ref=Reference.objects.create(name='هيكلي',owner=self.user); self.c.post('/references/%s/'%ref.pk,{'stable_id':'b1','title':'فرع','node_type':'BRANCH','parent':''}); branch=ref.nodes.get(stable_id='b1'); self.c.post('/references/%s/'%ref.pk,{'stable_id':'i1','title':'بند','node_type':'ITEM','parent':branch.pk}); self.assertEqual(ref.nodes.get(stable_id='i1').parent_id,branch.pk)
  def test_completed_cannot_be_deleted_by_owner(self):
   v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today(),status='COMPLETED'); self.assertTrue(Visit.objects.filter(pk=v.pk).exists()); self.assertEqual(self.c.post('/visits/%s/delete/'%v.pk).status_code,302); self.assertTrue(Visit.objects.filter(pk=v.pk).exists())
  def test_draft_can_be_deleted_by_owner(self):
