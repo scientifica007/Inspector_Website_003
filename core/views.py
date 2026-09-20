@@ -7,7 +7,7 @@ from django.contrib import messages
 from .models import *
 from .services import apply_guide, AssignmentError
 from .governance import submit_reference, review_proposal, ProposalError
-from .services import issue_assignment
+from .services import issue_assignment, revoke_assignment
 @login_required
 def dashboard(request): return render(request,'dashboard.html',{'visits':Visit.objects.filter(inspector=request.user).select_related('institution'),'institutions':Institution.objects.filter(active=True),'references':Reference.objects.filter(shared=True)|Reference.objects.filter(owner=request.user)})
 @login_required
@@ -50,6 +50,13 @@ def issue_assignment_view(request,pk):
  a=get_object_or_404(Assignment,pk=pk)
  entries=[{'stable_id':e.stable_id,'scope_locked':e.scope_locked,'completion_required':e.completion_required} for e in a.entries.all()]
  try: issue_assignment(a,entries); messages.success(request,'تم إصدار التكليف')
+ except AssignmentError as exc: messages.error(request,str(exc))
+ return redirect('assignments')
+@login_required
+def revoke_assignment_view(request,pk):
+ if not request.user.is_staff or request.method!='POST': return redirect('dashboard')
+ a=get_object_or_404(Assignment,pk=pk)
+ try: revoke_assignment(a,request.POST.get('reason','بدون سبب')); messages.success(request,'تم إلغاء التكليف')
  except AssignmentError as exc: messages.error(request,str(exc))
  return redirect('assignments')
 @login_required
@@ -98,7 +105,7 @@ def visit_detail(request,pk):
   messages.success(request,'تم حفظ الزيارة')
  nodes=v.items.all(); progress=(nodes.filter(result__in=['CONFORM','NONCONFORM','NA'],excluded=False).count(),nodes.filter(excluded=False).count())
  selected=set(nodes.values_list('stable_id',flat=True)); available=[x for x in v.reference_snapshot.get('nodes',[]) if x.get('stable_id') not in selected]
- return render(request,'visit_detail.html',{'visit':v,'items':nodes,'progress':progress,'available':available,'guides':Guide.objects.filter(active=True,reference__name=v.reference_name)})
+ return render(request,'visit_detail.html',{'visit':v,'items':nodes,'progress':progress,'available':available,'guides':Guide.objects.filter(active=True,reference__name=v.reference_name),'assignments':v.assignments.filter(status='ISSUED')})
 @login_required
 def complete(request,pk):
  v=get_object_or_404(Visit,pk=pk,inspector=request.user)
