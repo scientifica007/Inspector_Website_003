@@ -3,6 +3,7 @@ from django.test import TestCase,Client
 from django.contrib.auth.models import User
 from .models import *
 from .services import issue_assignment, revoke_assignment, apply_guide, AssignmentError
+from .governance import submit_reference, review_proposal
 class VisitSafetyTests(TestCase):
  def setUp(self):
   self.user=User.objects.create_user('inspector','', 'pw'); self.other=User.objects.create_user('other','', 'pw'); self.ins=Institution.objects.create(name='مؤسسة'); self.ref=Reference.objects.create(name='مرجع',shared=True); self.node=ReferenceNode.objects.create(reference=self.ref,stable_id='i1',title='بند',node_type='ITEM'); self.c=Client(); self.c.login(username='inspector',password='pw')
@@ -16,6 +17,8 @@ class VisitSafetyTests(TestCase):
   response=self.c.post('/references/',{'name':'مرجعي'}); self.assertEqual(response.status_code,302); self.assertTrue(Reference.objects.filter(name='مرجعي',owner=self.user,shared=False).exists())
  def test_reference_node_authoring_preserves_parent(self):
   ref=Reference.objects.create(name='هيكلي',owner=self.user); self.c.post('/references/%s/'%ref.pk,{'stable_id':'b1','title':'فرع','node_type':'BRANCH','parent':''}); branch=ref.nodes.get(stable_id='b1'); self.c.post('/references/%s/'%ref.pk,{'stable_id':'i1','title':'بند','node_type':'ITEM','parent':branch.pk}); self.assertEqual(ref.nodes.get(stable_id='i1').parent_id,branch.pk)
+ def test_reference_submission_freezes_and_approval_copies(self):
+  ref=Reference.objects.create(name='مقترح',owner=self.user); ReferenceNode.objects.create(reference=ref,stable_id='x',title='قديم',node_type='ITEM'); proposal=submit_reference(ref,self.user); ref.nodes.update(title='جديد'); self.assertEqual(proposal.snapshot['nodes'][0]['title'],'قديم'); admin=User.objects.create_user('admin',is_staff=True); shared=review_proposal(proposal,admin,True); self.assertTrue(shared.shared); self.assertEqual(shared.nodes.first().title,'قديم')
  def test_private_reference_owner_can_delete_shared_cannot(self):
   private=Reference.objects.create(name='خاص',owner=self.user); self.assertEqual(self.c.post('/references/%s/delete/'%private.pk).status_code,302); self.assertFalse(Reference.objects.filter(pk=private.pk).exists()); shared=Reference.objects.create(name='مشترك',shared=True); self.assertEqual(self.c.post('/references/%s/delete/'%shared.pk).status_code,404)
  def test_completed_cannot_be_deleted_by_owner(self):
