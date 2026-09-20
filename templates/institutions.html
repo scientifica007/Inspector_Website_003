@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class='card'><h1>المؤسسات</h1><form method='post' class='inline'>{% csrf_token %}<input name='name' placeholder='اسم المؤسسة' required><input name='kind' placeholder='النوع'><button>إضافة</button></form>{% for x in institutions %}<div class='row'><b>{{x.name}}</b><span>{{x.kind}}</span></div>{% endfor %}</section>{% endblock %}

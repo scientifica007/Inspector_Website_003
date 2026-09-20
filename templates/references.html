@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class='card'><h1>مكتبة المراجع</h1><p class='muted'>المراجع تحفظ نسخة مجمدة عند إنشاء الزيارة.</p>{% for r in references %}<div class='row'><b>{{r.name}}</b><span>{% if r.shared %}مشترك{% else %}خاص بك{% endif %}</span></div>{% empty %}<p>لا توجد مراجع متاحة.</p>{% endfor %}</section>{% endblock %}
