@@ -23,7 +23,7 @@ class VisitSafetyTests(TestCase):
   with self.assertRaises(AssignmentError): issue_assignment(bad,[{'stable_id':'missing'}])
   self.assertEqual(bad.entries.count(),0); self.assertEqual(bad.status,'DRAFT')
  def test_guide_is_idempotent_and_snapshot_bounded(self):
-  v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today(),reference_snapshot={'nodes':[{'stable_id':'i1'}]}); guide=Guide.objects.create(name='دليل',reference=self.ref,node_ids=['i1','new'])
+  v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today(),reference_snapshot={'id':self.ref.pk,'nodes':[{'stable_id':'i1'}]}); guide=Guide.objects.create(name='دليل',reference=self.ref,node_ids=['i1','new'])
   apply_guide(v,guide); apply_guide(v,guide); self.assertEqual(v.items.count(),1); self.assertEqual(v.items.first().origin,'GUIDE')
  def test_overlapping_revoke_keeps_other_obligation(self):
   v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today()); VisitNode.objects.create(visit=v,stable_id='i1',title='بند',node_type='ITEM'); a=Assignment.objects.create(visit=v,title='A'); b=Assignment.objects.create(visit=v,title='B'); issue_assignment(a,[{'stable_id':'i1','scope_locked':True}]); issue_assignment(b,[{'stable_id':'i1','completion_required':True}]); revoke_assignment(a,'انتهى'); item=v.items.get(); self.assertFalse(item.scope_locked); self.assertTrue(item.completion_required)

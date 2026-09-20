@@ -18,7 +18,7 @@ def references(request): return render(request,'references.html',{'references':R
 @transaction.atomic
 def visit_new(request):
  if request.method=='POST':
-  ins=get_object_or_404(Institution,pk=request.POST['institution']); ref=Reference.objects.filter(pk=request.POST.get('reference')).first(); snap={'name':ref.name,'nodes':list(ref.nodes.values('stable_id','title','node_type','parent_id','position'))} if ref else {'name':'بدون مرجع','nodes':[]}; v=Visit.objects.create(institution=ins,inspector=request.user,date=request.POST['date'],reference_name=snap['name'],reference_snapshot=snap)
+  ins=get_object_or_404(Institution,pk=request.POST['institution']); ref=Reference.objects.filter(pk=request.POST.get('reference')).first(); snap={'id':ref.pk,'name':ref.name,'nodes':list(ref.nodes.values('stable_id','title','node_type','parent_id','position'))} if ref else {'id':None,'name':'بدون مرجع','nodes':[]}; v=Visit.objects.create(institution=ins,inspector=request.user,date=request.POST['date'],reference_name=snap['name'],reference_snapshot=snap)
   return redirect('visit_detail',v.pk)
  return render(request,'visit_new.html',{'institutions':Institution.objects.filter(active=True),'references':Reference.objects.filter(shared=True)|Reference.objects.filter(owner=request.user)})
 @login_required
