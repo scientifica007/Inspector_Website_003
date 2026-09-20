@@ -13,7 +13,9 @@ class VisitSafetyTests(TestCase):
  def test_private_reference_creation_is_owned(self):
   response=self.c.post('/references/',{'name':'مرجعي'}); self.assertEqual(response.status_code,302); self.assertTrue(Reference.objects.filter(name='مرجعي',owner=self.user,shared=False).exists())
  def test_completed_cannot_be_deleted_by_owner(self):
-  v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today(),status='COMPLETED'); self.assertTrue(Visit.objects.filter(pk=v.pk).exists())
+  v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today(),status='COMPLETED'); self.assertTrue(Visit.objects.filter(pk=v.pk).exists()); self.assertEqual(self.c.post('/visits/%s/delete/'%v.pk).status_code,302); self.assertTrue(Visit.objects.filter(pk=v.pk).exists())
+ def test_draft_can_be_deleted_by_owner(self):
+  v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today()); self.assertEqual(self.c.post('/visits/%s/delete/'%v.pk).status_code,302); self.assertFalse(Visit.objects.filter(pk=v.pk).exists())
  def test_other_inspector_denied(self):
   v=Visit.objects.create(institution=self.ins,inspector=self.other,date=date.today()); self.assertEqual(self.c.get('/visits/%s/'%v.pk).status_code,404)
  def test_export_has_version(self):
