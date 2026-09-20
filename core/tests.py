@@ -33,6 +33,8 @@ class VisitSafetyTests(TestCase):
   v=Visit.objects.create(institution=self.ins,inspector=self.other,date=date.today()); self.assertEqual(self.c.get('/visits/%s/'%v.pk).status_code,404)
  def test_export_has_version(self):
   v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today(),reference_snapshot={'name':'x'}); response=self.c.get('/visits/%s/export/'%v.pk); self.assertEqual(response.json()['schema_version'],'1.0')
+ def test_export_contains_assignment_audit(self):
+  v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today()); a=Assignment.objects.create(visit=v,title='تكليف',status='REVOKED',reason='سبب'); AssignmentEntry.objects.create(assignment=a,stable_id='x',scope_locked=True); data=self.c.get('/visits/%s/export/'%v.pk).json(); self.assertEqual(data['assignments'][0]['reason'],'سبب'); self.assertTrue(data['assignments'][0]['entries'][0]['scope_locked'])
  def test_assignment_issue_is_atomic_and_adds_constraints(self):
   v=Visit.objects.create(institution=self.ins,inspector=self.user,date=date.today()); item=VisitNode.objects.create(visit=v,stable_id='i1',title='بند',node_type='ITEM'); a=Assignment.objects.create(visit=v,title='تكليف')
   issue_assignment(a,[{'stable_id':'i1','scope_locked':True,'completion_required':True}]); item.refresh_from_db(); self.assertTrue(item.scope_locked and item.completion_required)
