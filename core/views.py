@@ -6,6 +6,7 @@ from django.db import transaction
 from django.contrib import messages
 from .models import *
 from .services import apply_guide, AssignmentError
+from .governance import submit_reference, review_proposal, ProposalError
 @login_required
 def dashboard(request): return render(request,'dashboard.html',{'visits':Visit.objects.filter(inspector=request.user).select_related('institution'),'institutions':Institution.objects.filter(active=True),'references':Reference.objects.filter(shared=True)|Reference.objects.filter(owner=request.user)})
 @login_required
@@ -19,6 +20,19 @@ def reference_detail(request,pk):
  if request.method=='POST':
   parent_id=request.POST.get('parent'); parent=ReferenceNode.objects.filter(pk=parent_id,reference=ref).first() if parent_id else None; ReferenceNode.objects.create(reference=ref,stable_id=request.POST['stable_id'],title=request.POST['title'],node_type=request.POST['node_type'],parent=parent,position=ref.nodes.count()); return redirect('reference_detail',pk)
  return render(request,'reference_detail.html',{'reference':ref,'nodes':ref.nodes.all()})
+@login_required
+def submit_reference_view(request,pk):
+ ref=get_object_or_404(Reference,pk=pk,owner=request.user,shared=False)
+ if request.method=='POST': submit_reference(ref,request.user); messages.success(request,'تم إرسال المرجع للمراجعة');
+ return redirect('reference_detail',pk)
+@login_required
+def governance(request):
+ if not request.user.is_staff: return redirect('dashboard')
+ return render(request,'governance.html',{'proposals':ReferenceProposal.objects.select_related('reference','submitter').filter(status='PENDING')})
+@login_required
+def review_proposal_view(request,proposal_id,decision):
+ if not request.user.is_staff or request.method!='POST': return redirect('dashboard')
+ proposal=get_object_or_404(ReferenceProposal,pk=proposal_id); review_proposal(proposal,request.user,decision=='approve'); return redirect('governance')
 @login_required
 def delete_reference(request,pk):
  ref=get_object_or_404(Reference,pk=pk,owner=request.user,shared=False)
