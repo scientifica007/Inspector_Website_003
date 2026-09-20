@@ -13,6 +13,13 @@ def institutions(request):
  if request.method=='POST': Institution.objects.create(name=request.POST['name'],kind=request.POST.get('kind','')); return redirect('institutions')
  return render(request,'institutions.html',{'institutions':Institution.objects.all()})
 @login_required
+def reference_detail(request,pk):
+ ref=get_object_or_404(Reference,pk=pk)
+ if not (ref.shared or ref.owner_id==request.user.id): return redirect('references')
+ if request.method=='POST':
+  parent=ReferenceNode.objects.filter(pk=request.POST.get('parent')).first(); ReferenceNode.objects.create(reference=ref,stable_id=request.POST['stable_id'],title=request.POST['title'],node_type=request.POST['node_type'],parent=parent,position=ref.nodes.count()); return redirect('reference_detail',pk)
+ return render(request,'reference_detail.html',{'reference':ref,'nodes':ref.nodes.all()})
+@login_required
 def references(request):
  if request.method=='POST':
   Reference.objects.create(name=request.POST['name'],owner=request.user,shared=False); messages.success(request,'تم إنشاء المرجع الخاص'); return redirect('references')
