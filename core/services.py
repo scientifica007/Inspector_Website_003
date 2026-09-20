@@ -2,6 +2,18 @@ from django.db import transaction
 from django.utils import timezone
 from .models import *
 class AssignmentError(Exception): pass
+
+def apply_guide(visit, guide):
+ if visit.status!='DRAFT' or guide.reference_id != visit.reference_snapshot.get('id', guide.reference_id):
+  # compatibility is based on frozen stable identifiers, never live reference content
+  allowed={x.get('stable_id') for x in visit.reference_snapshot.get('nodes',[])}
+ else: allowed={x.get('stable_id') for x in visit.reference_snapshot.get('nodes',[])}
+ wanted=set(guide.node_ids) & allowed
+ existing=set(visit.items.values_list('stable_id',flat=True))
+ for node in guide.reference.nodes.filter(stable_id__in=wanted):
+  if node.stable_id not in existing:
+   VisitNode.objects.create(visit=visit,stable_id=node.stable_id,title=node.title,node_type=node.node_type,origin='GUIDE',parent_id_snapshot=node.parent.stable_id if node.parent else '')
+ return visit
 @transaction.atomic
 def issue_assignment(assignment, entries):
  if assignment.status!='DRAFT' or assignment.visit.status!='DRAFT': raise AssignmentError('لا يمكن إصدار التكليف')
