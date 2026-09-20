@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.db import transaction
 from django.contrib import messages
 from .models import *
+from .services import apply_guide, AssignmentError
 @login_required
 def dashboard(request): return render(request,'dashboard.html',{'visits':Visit.objects.filter(inspector=request.user).select_related('institution'),'institutions':Institution.objects.filter(active=True),'references':Reference.objects.filter(shared=True)|Reference.objects.filter(owner=request.user)})
 @login_required
@@ -21,6 +22,13 @@ def visit_new(request):
   return redirect('visit_detail',v.pk)
  return render(request,'visit_new.html',{'institutions':Institution.objects.filter(active=True),'references':Reference.objects.filter(shared=True)|Reference.objects.filter(owner=request.user)})
 @login_required
+def apply_guide_view(request,pk,guide_id):
+ v=get_object_or_404(Visit,pk=pk,inspector=request.user)
+ guide=get_object_or_404(Guide,pk=guide_id,active=True)
+ if request.method=='POST':
+  apply_guide(v,guide); messages.success(request,'تم تطبيق الدليل على نطاق الزيارة');
+ return redirect('visit_detail',pk)
+@login_required
 def visit_detail(request,pk):
  v=get_object_or_404(Visit,pk=pk,inspector=request.user)
  if request.method=='POST' and v.status=='DRAFT':
@@ -29,7 +37,7 @@ def visit_detail(request,pk):
    title=request.POST.get('title','عنصر محلي'); VisitNode.objects.create(visit=v,stable_id='local-'+str(v.items.count()+1),title=title,node_type='ITEM',origin='LOCAL')
   messages.success(request,'تم حفظ الزيارة')
  nodes=v.items.all(); progress=(nodes.filter(result__in=['CONFORM','NONCONFORM','NA']).count(),nodes.filter(excluded=False).count())
- return render(request,'visit_detail.html',{'visit':v,'items':nodes,'progress':progress})
+ return render(request,'visit_detail.html',{'visit':v,'items':nodes,'progress':progress,'guides':Guide.objects.filter(active=True,reference__name=v.reference_name)})
 @login_required
 def complete(request,pk):
  v=get_object_or_404(Visit,pk=pk,inspector=request.user)
